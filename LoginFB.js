@@ -79,7 +79,9 @@ let swipeCount = 0;
     );
     console.log("Logged into Tinder");
   } catch (err) {
-    console.log("Login failed" + err);
+    // login is failed now terminate the browser
+    console.log("Login failed " + err);
+    process.exit();
   }
 
   // return aria label of like or nope randomly
