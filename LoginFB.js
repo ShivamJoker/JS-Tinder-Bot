@@ -8,9 +8,9 @@ let swipeCount = 0;
   const browser = await puppeteer.launch({
     headless: false,
     args: [
-      "--window-size=1920,1080",
-      "--no-sandbox",
-      "--disable-setuid-sandbox"
+      "--window-size=1920,1080"
+      // "--no-sandbox",
+      // "--disable-setuid-sandbox"
     ]
   });
   // create browser context
@@ -42,11 +42,11 @@ let swipeCount = 0;
 
   // click the login button
   await FBLoginBtn.click();
-
   // capture the FB login popup
   const newPagePromise = new Promise(x =>
     browser.once("targetcreated", target => x(target.page()))
   );
+
   const popup = await newPagePromise;
 
   // wait for email box to open
@@ -73,29 +73,41 @@ let swipeCount = 0;
   // await page.keyboard.press("Enter");
 
   // wait for the swipe card to appear
-  await page
-    .waitForXPath(
+  try {
+    await page.waitForXPath(
       '(//*[@id="content"]/div/div[1]/div/main/div[1]/div/div/div[1]/div/div[1]/div[3]/div[1]/div/div)'
-    )
-    .then(() => console.log("Logged into Tinder"))
-    .catch(err => console.log("Login failed" + err));
+    );
+    console.log("Logged into Tinder");
+  } catch (err) {
+    console.log("Login failed" + err);
+  }
+
+  // return aria label of like or nope randomly
+  const randomSwipeSelector = () => {
+    const randomNum = Math.random() * 3;
+    if (randomNum < 1) {
+      return "[aria-label='Nope']";
+    } else {
+      return "[aria-label='Like']";
+    }
+  };
 
   // await page.waitForXPath(
   //   '(//*[@id="content"]/div/div[1]/div/main/div[1]/div/div/div[1]/div/div[2]/button[1])'
   // );
   // await page.screenshot({ path: "loggedin.png" });
 
-  // setInterval(() => {
-  //   page
-  //     .click('[aria-label="Nope"]')
-  //     .then(() => {
-  //       console.log(`${swipeCount} swiped`);
-  //       swipeCount++;
-  //     })
-  //     .catch(err => {
-  //       console.log(err);
-  //     });
-  // }, 300);
+  setInterval(() => {
+    page
+      .click(randomSwipeSelector())
+      .then(() => {
+        swipeCount++;
+        console.log(`${swipeCount} swiped`);
+      })
+      .catch(err => {
+        console.log(err);
+      });
+  }, 300);
 
   // await browser.close();
 })();
