@@ -27,7 +27,10 @@ let swipeCount = 0;
   await page.goto("https://tinder.com");
 
   // add your cordinates of location
-  await page.setGeolocation({ latitude: 28.649944, longitude: 77.0997011 });
+  await page.setGeolocation({
+    latitude: 28.588681897184927,
+    longitude: 77.38302630354374
+  });
 
   // wait for facebook login button to appear
   await page.waitForXPath(
@@ -40,13 +43,15 @@ let swipeCount = 0;
     '(//*[@id="modal-manager"]/div/div/div/div/div[3]/div[2]/button)'
   );
 
+  // capture the FB login popup
+  // const newPagePromise = new Promise(x =>
+  //   browser.once("targetcreated", target => x(target.page()))
+  // );
+
+  const newPagePromise = new Promise(x => page.once("popup", x));
+
   // click the login button
   await FBLoginBtn.click();
-  // capture the FB login popup
-  const newPagePromise = new Promise(x =>
-    browser.once("targetcreated", target => x(target.page()))
-  );
-
   const popup = await newPagePromise;
 
   // wait for email box to open
@@ -75,7 +80,8 @@ let swipeCount = 0;
   // wait for the swipe card to appear
   try {
     await page.waitForXPath(
-      '(//*[@id="content"]/div/div[1]/div/main/div[1]/div/div/div[1]/div/div[1]/div[3]/div[1]/div/div)'
+      '(//*[@id="content"]/div/div[1]/div/main/div[1]/div/div/div[1]/div/div[1]/div[3]/div[1]/div/div)',
+      { timeout: 60000 }
     );
     console.log("Logged into Tinder");
   } catch (err) {
@@ -99,17 +105,50 @@ let swipeCount = 0;
   // );
   // await page.screenshot({ path: "loggedin.png" });
 
-  setInterval(() => {
-    page
-      .click(randomSwipeSelector())
-      .then(() => {
-        swipeCount++;
-        console.log(`${swipeCount} swiped`);
-      })
-      .catch(err => {
-        console.log(err);
-      });
-  }, 300);
+  //now set an interval and click the like/nope button every ms
+
+  // const waitForResponse = async () => {};
+
+  page
+    .click(randomSwipeSelector())
+    .then(() => {
+      swipeCount++;
+      console.log(`${swipeCount} swiped`);
+    })
+    .catch(err => {
+      console.log(err);
+    });
+
+  // const firstRequest = await page.waitForResponse(response => {
+  //   const url = response.request().url();
+  //   console.log(url);
+  //   const pattern = /https:\/\/api.gotinder.com\/like\/*/;
+  //   return pattern.test(url);
+  // });
+
+  page.on("response", response => {
+    const url = response.request().url();
+    console.log(url);
+    const pattern = /https:\/\/api.gotinder.com\/like\/*/;
+    console.log(pattern.test(url));
+  });
+  console.log(firstRequest);
+
+  // setInterval(() => {
+  //   page
+  //     .click(randomSwipeSelector())
+  //     .then(async () => {
+  //       const firstRequest = await page.waitForResponse(
+  //         "https://api.gotinder.com"
+  //       );
+  //       console.log(firstRequest);
+  //       swipeCount++;
+  //       console.log(`${swipeCount} swiped`);
+  //     })
+  //     .catch(err => {
+  //       console.log(err);
+  //     });
+  // }, 4000);
 
   // await browser.close();
 })();
