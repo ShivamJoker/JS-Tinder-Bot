@@ -2,6 +2,8 @@ const puppeteer = require("puppeteer");
 const { username, password } = require("./credentials");
 const fs = require("fs");
 
+var player = require("play-sound")((opts = {}));
+
 let swipeCount = 0;
 const filePath = "swipeInfo.json";
 
@@ -14,6 +16,8 @@ try {
 } catch (error) {
   swipeInfo = swipeInfoObj;
 }
+
+console.log("Running Tinder Bot");
 
 (async () => {
   //set headless to false if you want to see the chrome
@@ -92,11 +96,19 @@ try {
 
   // wait for the swipe card to appear
 
+
+  setTimeout(() => {
+    page.reload();
+  }, 5000);
+  // await page.waitForSelector("[aria-label='enable']");
+  // page.click("[aria-label='enable']")
+  // page.click("[aria-label='enable']")
+
   const checkForSwipeCard = async () => {
     try {
       await page.waitForXPath(
         '(//*[@id="content"]/div/div[1]/div/main/div[1]/div/div/div[1]/div/div[1]/div[3]/div[1]/div/div)',
-        { timeout: 60000 }
+        { timeout: 30000 }
       );
       swipeInfo.swipes++;
       swipeInfo.skipped = swipeInfo.swipes - swipeInfo.likes;
@@ -107,7 +119,11 @@ try {
     } catch (err) {
       // login is failed now terminate the browser
       console.log("There is no card " + err);
-      process.exit();
+      //play an audio before exiting if no card
+      player.play("Wrong Buzzer.mp3", function(err) {
+        if (err) throw err;
+      });
+      // process.exit();
     }
   };
 
@@ -115,7 +131,7 @@ try {
 
   // return aria label of like or nope randomly
   const randomSwipeSelector = () => {
-    const randomNum = Math.random() * 3;
+    const randomNum = Math.random() * 5;
     if (randomNum < 1) {
       return "[aria-label='Nope']";
     } else {
