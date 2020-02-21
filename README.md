@@ -1,5 +1,9 @@
 # JS-Tinder-Bot
 Javascript Tinder Bot in Node JS using Puppeteer for automated login and swiping
+
+# Watch Video Tutorial
+[![](https://img.youtube.com/vi/fCG8u6aIkOo/hqdefault.jpg)](https://youtu.be/fCG8u6aIkOo)
+
 # Instructions for installing puppeteer
 
 Install puppeteer
