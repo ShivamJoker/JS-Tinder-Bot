@@ -1,6 +1,7 @@
 const puppeteer = require("puppeteer");
 const { username, password } = require("./credentials");
 const fs = require("fs");
+const notifier = require("node-notifier");
 
 var player = require("play-sound")((opts = {}));
 
@@ -18,6 +19,12 @@ try {
 }
 
 console.log("Running Tinder Bot");
+notifier.notify({
+  title: "Bot started running",
+  message: "Hope you get a match",
+  sound: true, // Only Notification Center or Windows Toasters
+  wait: true // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+});
 
 (async () => {
   //set headless to false if you want to see the chrome
@@ -96,10 +103,10 @@ console.log("Running Tinder Bot");
 
   // wait for the swipe card to appear
 
-
   setTimeout(() => {
     page.reload();
-  }, 5000);
+  }, 7000);
+
   // await page.waitForSelector("[aria-label='enable']");
   // page.click("[aria-label='enable']")
   // page.click("[aria-label='enable']")
@@ -110,8 +117,10 @@ console.log("Running Tinder Bot");
         '(//*[@id="content"]/div/div[1]/div/main/div[1]/div/div/div[1]/div/div[1]/div[3]/div[1]/div/div)',
         { timeout: 30000 }
       );
+      // console.log(swipeInfo);
+
       swipeInfo.swipes++;
-      swipeInfo.skipped = swipeInfo.swipes - swipeInfo.likes;
+      // swipeInfo.skipped = swipeInfo.swipes - swipeInfo.likes;
       fs.writeFileSync(filePath, JSON.stringify(swipeInfo), {
         flag: "w+"
       });
@@ -119,11 +128,23 @@ console.log("Running Tinder Bot");
     } catch (err) {
       // login is failed now terminate the browser
       console.log("There is no card " + err);
-      //play an audio before exiting if no card
-      player.play("Wrong Buzzer.mp3", function(err) {
+
+      //play an audio before exiting if no card also send notification
+      notifier.notify(
+        {
+          title: "You are out of profiles",
+          message: "Please change location",
+          sound: true, // Only Notification Center or Windows Toasters
+          wait: true // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+        },
+        function(err, response) {
+          // Response is response from notification
+        }
+      );
+      player.play("iphone_tweet.mp3", function(err) {
         if (err) throw err;
       });
-      // process.exit();
+      process.exit();
     }
   };
 
@@ -139,6 +160,7 @@ console.log("Running Tinder Bot");
     }
   };
 
+  let prvUrl;
   // whenever the page will get a http response this will fire
   page.on("response", response => {
     //get the url of response
@@ -147,8 +169,10 @@ console.log("Running Tinder Bot");
     const pattern = /https:\/\/api.gotinder.com\/like\/*/;
 
     //if it's  true then we liked it
-    if (pattern.test(url)) {
+    if (pattern.test(url) && prvUrl !== url) {
+      prvUrl = url;
       swipeInfo.likes++;
+      // console.log(url);
     }
   });
 
@@ -156,7 +180,9 @@ console.log("Running Tinder Bot");
 
   //now set an interval and click the like/nope button every ms
 
-  setInterval(() => {
+  let intervalTime = 1000;
+
+  const swipeCard = () => {
     page
       .click(randomSwipeSelector())
       .then(() => {
@@ -165,7 +191,12 @@ console.log("Running Tinder Bot");
       .catch(err => {
         console.log(err);
       });
-  }, 1000);
+    // generate random number b/w 300 - 1000 for random swipe time
+    intervalTime = Math.floor(Math.random() * 1000) + 300;
+
+    setTimeout(swipeCard, intervalTime);
+  };
+  swipeCard();
 
   // await browser.close();
 })();
