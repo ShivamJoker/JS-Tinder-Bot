@@ -2,8 +2,10 @@ const puppeteer = require("puppeteer");
 const { username, password } = require("./credentials");
 const fs = require("fs");
 const notifier = require("node-notifier");
+const player = require("play-sound")((opts = {}));
+const cities = require("toppop-cities");
 
-var player = require("play-sound")((opts = {}));
+const enableBackgroundMode = false;
 
 let swipeCount = 0;
 const filePath = "swipeInfo.json";
@@ -18,6 +20,9 @@ try {
   swipeInfo = swipeInfoObj;
 }
 
+//sleep function to pause further code
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 console.log("Running Tinder Bot");
 notifier.notify({
   title: "Bot started running",
@@ -29,7 +34,8 @@ notifier.notify({
 (async () => {
   //set headless to false if you want to see the chrome
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: enableBackgroundMode,
+    ignoreDefaultArgs: ["--enable-automation"],
     args: [
       "--window-size=1920,1080"
       // "--no-sandbox",
@@ -57,13 +63,13 @@ notifier.notify({
 
   // wait for facebook login button to appear
   await page.waitForXPath(
-    '(//*[@id="modal-manager"]/div/div/div/div/div[3]/div[2]/button)'
+    `//*[@id="modal-manager"]/div/div/div/div/div[3]/span/div[2]/button`
     // to get xpath right click on the element > copy > xpath
   );
 
   // select the login button
   const [FBLoginBtn] = await page.$x(
-    '(//*[@id="modal-manager"]/div/div/div/div/div[3]/div[2]/button)'
+    `//*[@id="modal-manager"]/div/div/div/div/div[3]/span/div[2]/button`
   );
 
   // capture the FB login popup
@@ -93,23 +99,11 @@ notifier.notify({
   // wait for login btn to appear and then click on it
   await popup.waitForSelector("#loginbutton");
   await popup.click("#loginbutton");
-
-  // popup.on("close", () => {
-  //   console.log("Logged in!");
-  // });
-  // popup.screenshot({ path: "login.png" });
-
-  // await page.keyboard.press("Enter");
-
   // wait for the swipe card to appear
 
   setTimeout(() => {
     page.reload();
-  }, 7000);
-
-  // await page.waitForSelector("[aria-label='enable']");
-  // page.click("[aria-label='enable']")
-  // page.click("[aria-label='enable']")
+  }, 3000);
 
   const checkForSwipeCard = async () => {
     try {
@@ -118,37 +112,24 @@ notifier.notify({
         { timeout: 30000 }
       );
       // console.log(swipeInfo);
-
       swipeInfo.swipes++;
       // swipeInfo.skipped = swipeInfo.swipes - swipeInfo.likes;
       fs.writeFileSync(filePath, JSON.stringify(swipeInfo), {
         flag: "w+"
       });
+      return true;
+
       // console.log("Logged into Tinder");
     } catch (err) {
       // login is failed now terminate the browser
       console.log("There is no card " + err);
 
-      //play an audio before exiting if no card also send notification
-      notifier.notify(
-        {
-          title: "You are out of profiles",
-          message: "Please change location",
-          sound: true, // Only Notification Center or Windows Toasters
-          wait: true // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
-        },
-        function(err, response) {
-          // Response is response from notification
-        }
-      );
-      player.play("iphone_tweet.mp3", function(err) {
-        if (err) throw err;
-      });
-      process.exit();
+      return false;
+      // process.exit();
     }
   };
 
-  checkForSwipeCard();
+  // checkForSwipeCard();
 
   // return aria label of like or nope randomly
   const randomSwipeSelector = () => {
@@ -176,25 +157,67 @@ notifier.notify({
     }
   });
 
+  // change location randomly
+  const changeRandomLocation = () => {
+    const index = Math.floor(Math.random() * cities.length);
+    console.log("Current location ");
+    console.log(cities[index]);
+
+    //play an audio before exiting if no card also send notification
+    // player.play("iphone_tweet.mp3", function(err) {
+    //   if (err) throw err;
+    // });
+    //send a notification
+    notifier.notify({
+      title: "No profiles, Location Changed To",
+      message: cities[index].name,
+      sound: false,
+      wait: true
+    });
+
+    page.setGeolocation({
+      latitude: cities[index].latitude,
+      longitude: cities[index].longitude
+    });
+  };
+
   // await page.screenshot({ path: "loggedin.png" });
 
   //now set an interval and click the like/nope button every ms
 
   let intervalTime = 1000;
+  let locationChangeCount = 0;
+  const swipeCard = async () => {
+    const isCardThere = await checkForSwipeCard();
+    if (isCardThere) {
+      page
+        .click(randomSwipeSelector())
+        .then(() => {})
+        .catch(err => {
+          console.log(err);
+        });
+      // generate random number b/w 500 - 2500 for random swipe time
+      intervalTime = Math.floor(Math.random() * 2500) + 500;
 
-  const swipeCard = () => {
-    page
-      .click(randomSwipeSelector())
-      .then(() => {
-        checkForSwipeCard();
-      })
-      .catch(err => {
-        console.log(err);
-      });
-    // generate random number b/w 300 - 1000 for random swipe time
-    intervalTime = Math.floor(Math.random() * 1000) + 300;
+      if (swipeInfo.swipes % 100 === 0) {
+        await sleep(intervalTime * 10); //2mins
+      }
+      setTimeout(swipeCard, intervalTime);
+    } else {
+      // process.exit();
+      console.log("not calling interval");
+      changeRandomLocation();
+      //wait for 15 sec after changing location
+      locationChangeCount++;
+      //see if it's the 10th time using modulo
+      if (locationChangeCount % 15 === 0) {
+        await sleep(5 * 60 * 1000); //10mins
+      }
+      await sleep(10000);
 
-    setTimeout(swipeCard, intervalTime);
+      await page.reload();
+      setTimeout(swipeCard, intervalTime);
+    }
   };
   swipeCard();
 
